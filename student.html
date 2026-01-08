@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إرسال الموقع</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #f0f2f5; padding: 40px 20px; }
+        .box { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        button { background: #28a745; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 50px; cursor: pointer; width: 100%; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>نظام تتبع الطلاب</h2>
+        <button onclick="startTracking()">بدء المشاركة الآن</button>
+        <p id="msg">جاهز للبدء...</p>
+    </div>
+
+    <script>
+        const dbURL = "https://safehome-fd30f-default-rtdb.firebaseio.com/students/student_1.json";
+
+        function startTracking() {
+            const msg = document.getElementById('msg');
+            if (navigator.geolocation) {
+                msg.innerText = "جاري طلب إذن الموقع من المتصفح...";
+                navigator.geolocation.watchPosition(pos => {
+                    const data = {
+                        lat: pos.coords.latitude,
+                        lng: pos.coords.longitude,
+                        time: new Date().toLocaleTimeString()
+                    };
+                    fetch(dbURL, { method: 'PUT', body: JSON.stringify(data) })
+                    .then(() => {
+                        msg.innerHTML = "<b style='color:green'>✅ موقعك يرسل للأستاذ الآن</b>";
+                    });
+                }, err => {
+                    msg.innerHTML = "<b style='color:red'>خطأ: يرجى تفعيل الـ GPS</b>";
+                }, { enableHighAccuracy: true });
+            }
+        }
+    </script>
+</body>
+</html>
+
