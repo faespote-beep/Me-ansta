@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>منصة التتبع والدردشة الجماعية</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
+        #map { height: 100vh; width: 100%; transition: filter 0.3s; }
+        
+        /* تأثير الطوارئ الشامل */
+        .emergency-active { animation: flash-red 0.5s infinite; filter: sepia(1) saturate(5) hue-rotate(-50deg); }
+        @keyframes flash-red { 0% { background: red; } 50% { background: white; } 100% { background: red; } }
+
+        /* صندوق الدردشة */
+        #chat-box {
+            position: fixed; bottom: 20px; left: 20px; width: 260px; height: 300px;
+            background: rgba(255, 255, 255, 0.9); z-index: 2000; border-radius: 15px;
+            display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        #messages { flex: 1; overflow-y: auto; padding: 10px; font-size: 14px; }
+        #chat-input-area { display: flex; padding: 10px; border-top: 1px solid #ddd; }
+        #chat-input-area input { flex: 1; padding: 5px; border: 1px solid #ccc; border-radius: 5px; }
+
+        /* أزرار التحكم */
+        .controls { position: fixed; top: 10px; right: 10px; z-index: 2000; display: flex; flex-direction: column; gap: 5px; }
+        .btn { padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-sos { background: #ff4444; color: white; }
+        .btn-share { background: #44bb44; color: white; }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="controls">
+    <input type="text" id="userName" placeholder="ادخل اسمك..." style="padding:8px; border-radius:5px; border:none;">
+    <button class="btn btn-share" onclick="startSharing()">بث موقعي للكل 📡</button>
+    <button class="btn btn-sos" onclick="triggerSOS()">🚨 طوارئ SOS</button>
+</div>
+
+<div id="chat-box">
+    <div style="background:#007bff; color:white; padding:10px; border-radius:15px 15px 0 0; font-weight:bold; text-align:center;">الدردشة الجماعية</div>
+    <div id="messages"></div>
+    <div id="chat-input-area">
+        <input type="text" id="msgInput" placeholder="اكتب رسالة...">
+        <button onclick="sendMessage()" style="border:none; background:none; cursor:pointer;">➡️</button>
+    </div>
+</div>
+
+<audio id="alarmSound" src="https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg" loop></audio>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const dbURL = "https://safehome-fd30f-default-rtdb.firebaseio.com/";
+    let myName = "";
+    let map = L.map('map').setView([32.02, 36.08], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    let markers = {};
+    let isSharing = false;
+
+    // أيقونة "الرجل" بدلاً من الدراجة
+    const manIcon = L.icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/3063/3063822.png', // أيقونة رجل يمشي
+        iconSize: [40, 40], iconAnchor: [20, 40], popupAnchor: [0, -40]
+    });
+
+    function startSharing() {
+        myName = document.getElementById('userName').value;
+        if (!myName) return alert("اكتب اسمك أولاً!");
+        isSharing = true;
+        navigator.geolocation.watchPosition(pos => {
+            if (!isSharing) return;
+            fetch(`${dbURL}users/${myName}.json`, {
+                method: 'PUT',
+                body: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude, time: new Date().toLocaleTimeString(), sos: false })
+            });
+        }, null, { enableHighAccuracy: true });
+    }
+
+    function triggerSOS() {
+        if (!myName) return alert("اكتب اسمك وابدأ البث أولاً!");
+        fetch(`${dbURL}global_status.json`, { method: 'PUT', body: JSON.stringify({ emergency: true, by: myName }) });
+        fetch(`${dbURL}users/${myName}/sos.json`, { method: 'PUT', body: "true" });
+    }
+
+    function sendMessage() {
+        const txt = document.getElementById('msgInput').value;
+        if (!txt || !myName) return alert("تأكد من الاسم وكتابة الرسالة");
+        fetch(`${dbURL}chat.json`, {
+            method: 'POST',
+            body: JSON.stringify({ user: myName, text: txt, time: new Date().toLocaleTimeString() })
+        });
+        document.getElementById('msgInput').value = "";
+    }
+
+    // التحديث اللحظي للكل
+    setInterval(() => {
+        // تحديث المواقع
+        fetch(`${dbURL}users.json`).then(r => r.json()).then(data => {
+            if (!data) return;
+            Object.keys(data).forEach(u => {
+                const pos = [data[u].lat, data[u].lng];
+                if (!markers[u]) {
+                    markers[u] = L.marker(pos, {icon: manIcon}).addTo(map).bindPopup(u);
+                } else {
+                    markers[u].setLatLng(pos);
+                }
+            });
+        });
+
+        // تحديث الدردشة
+        fetch(`${dbURL}chat.json?orderBy="$key"&limitToLast=10`).then(r => r.json()).then(data => {
+            if (!data) return;
+            let html = "";
+            Object.values(data).forEach(m => {
+                html += `<div><b>${m.user}:</b> ${m.text}</div>`;
+            });
+            document.getElementById('messages').innerHTML = html;
+        });
+
+        // مراقبة حالة الطوارئ العامة
+        fetch(`${dbURL}global_status.json`).then(r => r.json()).then(status => {
+            if (status && status.emergency) {
+                document.body.classList.add('emergency-active');
+                document.getElementById('alarmSound').play();
+            } else {
+                document.body.classList.remove('emergency-active');
+                document.getElementById('alarmSound').pause();
+            }
+        });
+    }, 2000);
+
+    // تفعيل الصوت عند اللمس
+    document.addEventListener('click', () => { document.getElementById('alarmSound').play().then(()=>document.getElementById('alarmSound').pause()); }, {once: true});
+</script>
+</body>
+</html>
