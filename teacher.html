@@ -1,79 +1,81 @@
-
-         <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>تتبع مباشر مع تنبيه</title>
+    <title>رادار التتبع الاحترافي</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
+        body, html { margin: 0; padding: 0; height: 100%; }
         #map { height: 100vh; width: 100%; }
-        .info-panel {
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-            z-index: 1000; background: white; padding: 10px 20px;
-            border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            text-align: center; border: 2px solid #28a745;
-        }
+        .control-panel { position: fixed; top: 10px; right: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
 
-    <div class="info-panel">
-        📢 الحالة: <span id="status">جاري التتبع...</span><br>
-        🕒 آخر حركة: <span id="lastUpdate">--:--</span>
+    <div class="control-panel">
+        <b>رادار الطلاب</b>
+        <div id="studentList">انتظار البيانات...</div>
     </div>
 
     <div id="map"></div>
-
-    <audio id="alertSound" src="https://www.soundjay.com/buttons/beep-07a.mp3"></audio>
+    <audio id="beep" src="https://www.soundjay.com/buttons/beep-07a.mp3"></audio>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const firebaseURL = "https://safehome-fd30f-default-rtdb.firebaseio.com/students/student_1.json";
+        // إعداد الخريطة
         var map = L.map('map').setView([32.02, 36.08], 15);
         
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        // طبقات الخريطة (عادي + أقمار صناعية)
+        var streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+        
+        var baseMaps = { "خريطة الشوارع": streetLayer, "أقمار صناعية": satelliteLayer };
+        L.control.layers(baseMaps).addTo(map);
+
+        var students = {}; // لتخزين بيانات كل طالب (Marker + Path)
 
         var studentIcon = L.icon({
-            iconUrl: 'https://cdn-icons-png.flaticon.com/512/5777/5777095.png',
-            iconSize: [45, 45], iconAnchor: [22, 45]
+            iconUrl: 'https://cdn-icons-png.flaticon.com/512/3063/3063822.png', // أيقونة شخص يمشي
+            iconSize: [40, 40], iconAnchor: [20, 40], popupAnchor: [0, -40]
         });
 
-        var marker = L.marker([0, 0], {icon: studentIcon}).addTo(map);
-        var lastCoords = ""; // لتخزين آخر موقع ومقارنته
-
-        function updateMap() {
-            fetch(firebaseURL)
-            .then(response => response.json())
+        function updateData() {
+            fetch("https://safehome-fd30f-default-rtdb.firebaseio.com/students.json")
+            .then(res => res.json())
             .then(data => {
-                if (data && data.lat) {
-                    var currentCoords = data.lat + "," + data.lng;
+                if (!data) return;
+                
+                let listHtml = "";
+                Object.keys(data).forEach(name => {
+                    let s = data[name];
+                    let pos = [s.lat, s.lng];
                     
-                    // إذا تغير الموقع عن آخر مرة
-                    if (currentCoords !== lastCoords) {
-                        lastCoords = currentCoords;
-                        
-                        var newPos = [data.lat, data.lng];
-                        marker.setLatLng(newPos);
-                        map.panTo(newPos);
-                        
-                        document.getElementById('lastUpdate').innerText = data.time;
-                        document.getElementById('status').innerText = "تم رصد حركة جديدة!";
-                        document.getElementById('status').style.color = "green";
+                    listHtml += `<div>📍 ${name} (${s.time})</div>`;
 
-                        // تشغيل صوت التنبيه
-                        document.getElementById('alertSound').play().catch(e => console.log("الصوت يحتاج ضغطة واحدة لتفعيله"));
-                        
-                        setTimeout(() => { document.getElementById('status').innerText = "مراقب"; }, 2000);
+                    if (!students[name]) {
+                        // إنشاء طالب جديد
+                        students[name] = {
+                            marker: L.marker(pos, {icon: studentIcon}).addTo(map).bindPopup(name),
+                            path: L.polyline([pos], {color: 'blue', weight: 3}).addTo(map)
+                        };
+                        document.getElementById('beep').play().catch(e => {});
+                    } else {
+                        // تحديث موقع الطالب الحالي ورسم المسار
+                        let lastPos = students[name].marker.getLatLng();
+                        if (lastPos.lat !== s.lat || lastPos.lng !== s.lng) {
+                            students[name].marker.setLatLng(pos);
+                            students[name].path.addLatLng(pos);
+                            document.getElementById('beep').play().catch(e => {});
+                        }
                     }
-                }
+                });
+                document.getElementById('studentList').innerHTML = listHtml;
             });
         }
 
-        // تحديث كل ثانية واحدة لرصد أي حركة فورية
-        setInterval(updateMap, 1000);
+        setInterval(updateData, 2000);
+        map.on('click', () => document.getElementById('beep').play()); // لتفعيل الصوت
     </script>
 </body>
 </html>
-   
