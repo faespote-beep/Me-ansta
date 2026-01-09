@@ -2,44 +2,46 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>إرسال الموقع</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: sans-serif; text-align: center; background: #f0f2f5; padding: 40px 20px; }
-        .box { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
-        button { background: #28a745; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 50px; cursor: pointer; width: 100%; font-weight: bold; }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f0f2f5; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 300px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
     </style>
 </head>
 <body>
-    <div class="box">
-        <h2>نظام تتبع الطلاب</h2>
-        <button onclick="startTracking()">بدء المشاركة الآن</button>
-        <p id="msg">جاهز للبدء...</p>
+    <div class="card">
+        <h3>نظام التتبع المطور</h3>
+        <input type="text" id="studentName" placeholder="اكتب اسمك هنا...">
+        <button onclick="startSharing()" id="btn">بدء مشاركة الموقع</button>
+        <p id="msg"></p>
     </div>
 
     <script>
-        const dbURL = "https://safehome-fd30f-default-rtdb.firebaseio.com/students/student_1.json";
+        function startSharing() {
+            const name = document.getElementById('studentName').value;
+            if (!name) { alert("رجاءً اكتب اسمك أولاً"); return; }
+            
+            document.getElementById('btn').disabled = true;
+            document.getElementById('msg').innerText = "جاري الإرسال...";
 
-        function startTracking() {
-            const msg = document.getElementById('msg');
-            if (navigator.geolocation) {
-                msg.innerText = "جاري طلب إذن الموقع من المتصفح...";
-                navigator.geolocation.watchPosition(pos => {
-                    const data = {
-                        lat: pos.coords.latitude,
-                        lng: pos.coords.longitude,
-                        time: new Date().toLocaleTimeString()
-                    };
-                    fetch(dbURL, { method: 'PUT', body: JSON.stringify(data) })
-                    .then(() => {
-                        msg.innerHTML = "<b style='color:green'>✅ موقعك يرسل للأستاذ الآن</b>";
-                    });
-                }, err => {
-                    msg.innerHTML = "<b style='color:red'>خطأ: يرجى تفعيل الـ GPS</b>";
-                }, { enableHighAccuracy: true });
-            }
+            navigator.geolocation.watchPosition(pos => {
+                const data = {
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude,
+                    name: name,
+                    time: new Date().toLocaleTimeString()
+                };
+                // استبدل الرابط برابط Firebase الخاص بك (تأكد من وجود /students/${name}.json)
+                fetch(`https://safehome-fd30f-default-rtdb.firebaseio.com/students/${name}.json`, {
+                    method: 'PUT',
+                    body: JSON.stringify(data)
+                });
+                document.getElementById('msg').innerText = "✅ موقعك يُبث الآن باسم: " + name;
+            }, err => alert("يرجى تفعيل الـ GPS"), { enableHighAccuracy: true });
         }
     </script>
 </body>
 </html>
-
