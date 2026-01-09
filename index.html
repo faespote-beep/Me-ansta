@@ -2,88 +2,68 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>منصة الرادار والدردشة الاحترافية</title>
+    <title>رادار المسار الاحترافي</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        /* تصميم الواجهة الأساسي */
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; background-color: #1a1a1a; }
-        #map { height: 100vh; width: 100%; z-index: 1; filter: contrast(1.1); }
-
-        /* تأثير الطوارئ القوي (وميض أحمر جبار) */
-        #emergency-screen {
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #111; font-family: sans-serif; }
+        #map { height: 100vh; width: 100%; z-index: 1; }
+        
+        /* وميض الطوارئ الفائق */
+        #sos-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 9999; pointer-events: none; display: none;
-            box-shadow: inset 0 0 100px #ff0000;
         }
-        .sos-active #emergency-screen {
+        .active-emergency #sos-overlay {
             display: block; animation: power-flash 0.3s infinite;
         }
         @keyframes power-flash {
-            0% { background: rgba(255, 0, 0, 0.8); }
+            0% { background: rgba(255, 0, 0, 0.85); }
             50% { background: transparent; }
-            100% { background: rgba(255, 0, 0, 0.8); }
+            100% { background: rgba(255, 0, 0, 0.85); }
         }
 
-        /* لوحة التحكم العلوية */
-        .control-panel { 
+        /* واجهة التحكم العلوية */
+        .ui-panel { 
             position: fixed; top: 15px; right: 15px; z-index: 2000; 
-            background: rgba(255, 255, 255, 0.95); padding: 15px; border-radius: 20px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 200px; backdrop-filter: blur(5px);
-            border: 2px solid #007bff;
+            background: white; padding: 15px; border-radius: 15px; 
+            box-shadow: 0 5px 25px rgba(0,0,0,0.5); width: 190px;
         }
         
-        /* صندوق الدردشة المطور */
-        .chat-hub {
+        /* منطقة الدردشة */
+        .chat-container {
             position: fixed; bottom: 15px; left: 15px; right: 15px; z-index: 2000;
-            display: flex; flex-direction: column; max-height: 40%;
+            display: flex; flex-direction: column;
         }
-        #chat-window { 
-            background: rgba(255, 255, 255, 0.9); border-radius: 15px 15px 0 0; 
-            padding: 12px; overflow-y: auto; flex-grow: 1; height: 150px;
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.2); border: 1px solid #ddd;
+        #chat-logs { 
+            background: rgba(255,255,255,0.95); height: 120px; overflow-y: auto; 
+            border-radius: 15px 15px 0 0; padding: 10px; border: 1px solid #ccc; font-size: 13px;
         }
-        .typing-area { 
-            display: flex; background: #fff; padding: 10px; 
-            border-radius: 0 0 15px 15px; border: 1px solid #ddd; border-top: none;
-            align-items: center;
-        }
-        #msgInput { flex: 1; border: none; outline: none; font-size: 16px; padding: 5px; }
-        .send-btn-icon { 
-            background: #007bff; color: white; border: none; border-radius: 50%; 
-            width: 45px; height: 45px; cursor: pointer; display: flex; 
-            align-items: center; justify-content: center; font-size: 20px;
-            transition: transform 0.2s;
-        }
-        .send-btn-icon:active { transform: scale(0.9); }
+        .input-bar { display: flex; background: white; padding: 8px; border-radius: 0 0 15px 15px; border: 1px solid #ccc; border-top: none; }
+        #msgInput { flex: 1; border: none; outline: none; padding: 5px; font-size: 16px; }
+        .btn-send { background: #007bff; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; }
 
-        /* الأزرار */
-        .main-btn { width: 100%; padding: 12px; margin-top: 8px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        .btn-start { background: #28a745; color: white; }
-        .btn-sos-global { background: #dc3545; color: white; font-size: 16px; border: 2px solid #fff; }
-        
-        /* قائمة المستخدمين الصغير */
-        #user-counter { font-size: 12px; color: #555; margin-top: 5px; text-align: center; }
+        .btn-action { width: 100%; padding: 12px; margin-top: 8px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .go-live { background: #28a745; color: white; }
+        .sos-trigger { background: #d32f2f; color: white; border: 2px solid #fff; }
     </style>
 </head>
 <body>
 
-<div id="emergency-screen"></div>
+<div id="sos-overlay"></div>
 <div id="map"></div>
 
-<div class="control-panel">
-    <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #007bff; text-align: center;">🛰️ الرادار الذكي</h3>
-    <input type="text" id="userName" placeholder="أدخل اسمك هنا..." style="width: 90%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; outline: none;">
-    <button class="main-btn btn-start" onclick="activateGPS()">🚀 تشغيل البث المباشر</button>
-    <button class="main-btn btn-sos-global" onclick="triggerGlobalSOS()">🚨 استغاثة عاجلة (SOS)</button>
-    <div id="user-counter">المتصلون الآن: جاري التحميل...</div>
+<div class="ui-panel">
+    <input type="text" id="uID" placeholder="اسمك..." style="width:88%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid #ddd;">
+    <button class="btn-action go-live" onclick="startTracking()">🚀 بث ومسار (زلمة)</button>
+    <button class="btn-action sos-trigger" onclick="triggerSOS()">🚨 نداء طوارئ</button>
 </div>
 
-<div class="chat-hub">
-    <div id="chat-window">مرحباً بك! أدخل اسمك وشغل البث للبدء..</div>
-    <div class="typing-area">
-        <input type="text" id="msgInput" placeholder="اكتب رسالة للجميع...">
-        <button class="send-btn-icon" onclick="pushMessage()">➤</button>
+<div class="chat-container">
+    <div id="chat-logs">جاهز للرصد...</div>
+    <div class="input-bar">
+        <input type="text" id="msgInput" placeholder="رسالة...">
+        <button class="btn-send" onclick="sendMsg()">➤</button>
     </div>
 </div>
 
@@ -91,95 +71,105 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    const FIREBASE_DB = "https://safehome-fd30f-default-rtdb.firebaseio.com/";
-    let myIdentity = "";
-    let activeMarkers = {};
+    const dbPath = "https://safehome-fd30f-default-rtdb.firebaseio.com/";
+    let map = L.map('map', {zoomControl: false}).setView([32.02, 36.08], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    // أيقونة الرجل الذي يمشي (Walker Icon)
+    let myName = "";
+    let userMarkers = {};
+    let userPaths = {}; // لتخزين مسارات الحركة
+
     const walkerIcon = L.icon({
         iconUrl: 'https://cdn-icons-png.flaticon.com/512/1260/1260271.png',
         iconSize: [50, 50],
-        iconAnchor: [25, 50],
-        popupAnchor: [0, -50]
+        iconAnchor: [25, 50]
     });
 
-    // إعداد الخريطة
-    let map = L.map('map', { zoomControl: false }).setView([32.02, 36.08], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-    function activateGPS() {
-        myIdentity = document.getElementById('userName').value;
-        if (!myIdentity) return alert("من فضلك اكتب اسمك أولاً لكي يراك الآخرون!");
-
-        // تفعيل الصوت للمتصفح
+    function startTracking() {
+        myName = document.getElementById('uID').value;
+        if (!myName) return alert("سجل اسمك أولاً!");
+        
         document.getElementById('sos-audio').play().then(() => document.getElementById('sos-audio').pause());
 
-        navigator.geolocation.watchPosition(pos => {
-            const coords = { 
-                lat: pos.coords.latitude, 
-                lng: pos.coords.longitude, 
-                time: new Date().toLocaleTimeString() 
-            };
-            fetch(`${FIREBASE_DB}users/${myIdentity}.json`, { method: 'PUT', body: JSON.stringify(coords) });
-        }, err => {
-            alert("خطأ: يرجى تفعيل الـ GPS في الهاتف والسماح للمتصفح بالوصول لموقعك.");
-        }, { enableHighAccuracy: true });
+        navigator.geolocation.watchPosition(p => {
+            const lat = p.coords.latitude;
+            const lng = p.coords.longitude;
+            const time = new Date().toLocaleTimeString('ar-EG');
+            
+            // تحديث الموقع الحالي
+            fetch(`${dbPath}users/${myName}.json`, { 
+                method: 'PUT', 
+                body: JSON.stringify({ lat, lng, time }) 
+            });
+
+            // إضافة نقطة للمسار التاريخي في قاعدة البيانات
+            fetch(`${dbPath}paths/${myName}.json`, { 
+                method: 'POST', 
+                body: JSON.stringify({ lat, lng }) 
+            });
+
+        }, (err) => alert("فعل الـ GPS!"), { enableHighAccuracy: true });
     }
 
-    function triggerGlobalSOS() {
-        if (!myIdentity) return alert("سجل دخولك أولاً!");
-        fetch(`${FIREBASE_DB}global_emergency.json`, { method: 'PUT', body: JSON.stringify({ active: true, owner: myIdentity }) });
-        pushMessage("🆘🆘 نداء طوارئ عاجل! أنا في خطر! 🆘🆘");
+    function triggerSOS() {
+        if(!myName) return alert("سجل اسمك أولاً");
+        fetch(`${dbPath}global_emergency.json`, { method: 'PUT', body: JSON.stringify({ active: true, user: myName }) });
+        sendMsg("🆘 استغاثة عاجلة من: " + myName);
     }
 
-    function pushMessage(text) {
-        const messageText = text || document.getElementById('msgInput').value;
-        if (!messageText || !myIdentity) return;
-        fetch(`${FIREBASE_DB}messages.json`, { 
-            method: 'POST', 
-            body: JSON.stringify({ user: myIdentity, msg: messageText, timestamp: Date.now() }) 
-        });
+    function sendMsg(altText) {
+        const text = altText || document.getElementById('msgInput').value;
+        if (!text || !myName) return;
+        fetch(`${dbPath}messages.json`, { method: 'POST', body: JSON.stringify({ u: myName, m: text }) });
         document.getElementById('msgInput').value = "";
     }
 
-    // محرك التحديث الفوري (كل 1.5 ثانية)
     setInterval(() => {
-        // 1. تحديث مواقع المستخدمين (رجل يمشي)
-        fetch(`${FIREBASE_DB}users.json`).then(r => r.json()).then(data => {
+        // 1. تحديث الزلمة ووقت الدخول
+        fetch(`${dbPath}users.json`).then(r => r.json()).then(data => {
             if (!data) return;
-            document.getElementById('user-counter').innerText = "المتصلون الآن: " + Object.keys(data).length;
-            Object.keys(data).forEach(user => {
-                if (!activeMarkers[user]) {
-                    activeMarkers[user] = L.marker([data[user].lat, data[user].lng], {icon: walkerIcon}).addTo(map).bindPopup("<b>" + user + "</b><br>تحديث: " + data[user].time);
+            Object.keys(data).forEach(u => {
+                if (!userMarkers[u]) {
+                    userMarkers[u] = L.marker([data[u].lat, data[u].lng], {icon: walkerIcon}).addTo(map)
+                        .bindPopup(`<b>${u}</b><br>دخل الساعة: ${data[u].time}`);
                 } else {
-                    activeMarkers[user].setLatLng([data[user].lat, data[user].lng]);
+                    userMarkers[u].setLatLng([data[u].lat, data[u].lng]);
                 }
             });
         });
 
-        // 2. تحديث الدردشة المباشرة
-        fetch(`${FIREBASE_DB}messages.json?limitToLast=10`).then(r => r.json()).then(data => {
+        // 2. تحديث مسارات الحركة (الخطوط)
+        fetch(`${dbPath}paths.json`).then(r => r.json()).then(data => {
             if (!data) return;
-            let logHtml = "";
-            Object.values(data).sort((a,b) => a.timestamp - b.timestamp).forEach(m => {
-                logHtml += `<div style="margin-bottom:8px;"><b>${m.user}:</b> ${m.msg}</div>`;
+            Object.keys(data).forEach(u => {
+                const points = Object.values(data[u]).map(p => [p.lat, p.lng]);
+                if (!userPaths[u]) {
+                    userPaths[u] = L.polyline(points, {color: '#007bff', weight: 3, opacity: 0.6}).addTo(map);
+                } else {
+                    userPaths[u].setLatLngs(points);
+                }
             });
-            const win = document.getElementById('chat-window');
-            win.innerHTML = logHtml;
-            win.scrollTop = win.scrollHeight;
         });
 
-        // 3. نظام الطوارئ الشامل (الوميض القوي)
-        fetch(`${FIREBASE_DB}global_emergency.json`).then(r => r.json()).then(sos => {
+        // 3. الدردشة
+        fetch(`${dbPath}messages.json?limitToLast=8`).then(r => r.json()).then(data => {
+            if (!data) return;
+            let log = "";
+            Object.values(data).forEach(m => { log += `<div><b>${m.u}:</b> ${m.m}</div>`; });
+            document.getElementById('chat-logs').innerHTML = log;
+        });
+
+        // 4. الوميض الأحمر
+        fetch(`${dbPath}global_emergency.json`).then(r => r.json()).then(sos => {
             if (sos && sos.active) {
-                document.body.classList.add('sos-active');
+                document.body.classList.add('active-emergency');
                 document.getElementById('sos-audio').play();
             } else {
-                document.body.classList.remove('sos-active');
+                document.body.classList.remove('active-emergency');
                 document.getElementById('sos-audio').pause();
             }
         });
-    }, 1500);
+    }, 2000);
 </script>
 </body>
 </html>
